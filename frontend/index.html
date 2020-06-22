@@ -1,0 +1,104 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>The HTML5 Herald</title>
+  <meta name="description" content="The HTML5 Herald">
+  <meta name="author" content="SitePoint">
+  <script src='./vendors/socket.io-client.js'></script>
+    <style>
+        .bolder {
+            font-weight: bolder;
+            margin-right: 8px;
+        }
+        .messages {
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            display: flex;
+            align-items: 'center';
+            margin: 5px 0;
+        }
+        .title {
+            width: 150px;
+            font-weight: bolder;
+            margin: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .content {
+        }
+        .content-wide {
+            margin-left: 160px;
+        }
+    </style>
+</head>
+
+<body>
+    <form id='form'>
+        <input name='message' />
+        <button>send msg</button>
+    </form>
+    <div id='messages' class='messages'>
+
+    </div>
+</body>
+
+</html>
+
+<script>
+    const form = document.getElementById('form');
+    var messageList = document.getElementById('messages');
+    const socket = io('http://localhost:3000/chat', { autoConnect: false });
+    var lastItem = document.querySelector('.message:last-child');
+
+    socket.on('messages', (messages) => {
+        messages.forEach(({ id, message }) => pushMessage(id, message));
+    });
+    socket.on('message', ({ id, message }) => {
+        pushMessage(id, message);
+    });
+    socket.on('connect', () => {
+        console.log('socket connected');
+    });
+    socket.open();
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const message = formData.get('message');
+        socket.send(message || '');
+        form.reset();
+    };
+
+    function pushMessage(uid, message) {
+        const prevId = lastItem && lastItem.getAttribute('uid');
+        
+        const shouldHideTitle = prevId === uid;
+
+        if (shouldHideTitle) {
+            const prevContent = lastItem.querySelector('.content');
+            const prevTitle = lastItem.querySelector('.title');
+            prevContent.setAttribute('class', 'content-wide');
+            lastItem.removeChild(prevTitle);
+        }
+
+        const listItem = `
+            <p uid=${uid} class='message'>
+                <span class='title'>${uid}</span>
+                <span class='content'>${message}</span>
+            </p>
+        `;
+
+        messageList.innerHTML += listItem;
+
+        const childs = messageList.children;
+        lastItem = childs.length
+            ? childs[childs.length - 1]
+            : null; 
+    }
+</script>
